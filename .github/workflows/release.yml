@@ -25,10 +25,13 @@ jobs:
           arch: "win64_mingw"
           cache: true
 
-      - name: Set up MinGW
-        uses: egor-tensin/setup-mingw@v2
+      - name: Set up MSYS2 MinGW
+        uses: msys2/setup-msys2@v2
         with:
-          platform: x64
+          update: true
+          install: >-
+            mingw-w64-x86_64-toolchain
+            make
 
       - name: Build project
         shell: pwsh
