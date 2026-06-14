@@ -23,6 +23,7 @@ jobs:
           host: "windows"
           target: "desktop"
           arch: "win64_mingw"
+          modules: "qtserialport qtsvg"
           cache: true
 
       - name: Set up MSYS2 MinGW
