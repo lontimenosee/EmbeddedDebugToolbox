@@ -1,0 +1,70 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.8.3"
+          host: "windows"
+          target: "desktop"
+          arch: "win64_mingw"
+          cache: true
+
+      - name: Set up MinGW
+        uses: egor-tensin/setup-mingw@v2
+        with:
+          platform: x64
+
+      - name: Build project
+        shell: pwsh
+        run: |
+          qmake serialAssistant.pro CONFIG+=release
+          mingw32-make release
+
+      - name: Prepare dist folder
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Copy-Item release\EmbeddedDebugToolbox.exe dist\
+
+      - name: Deploy Qt runtime
+        shell: pwsh
+        run: |
+          windeployqt --release --compiler-runtime dist\EmbeddedDebugToolbox.exe
+
+      - name: Build portable zip
+        shell: pwsh
+        run: |
+          Compress-Archive -Path dist\* -DestinationPath EmbeddedDebugToolbox_Portable.zip -Force
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup -y
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          iscc installer.iss
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            EmbeddedDebugToolbox_Portable.zip
+            Output/EmbeddedDebugToolbox_Setup.exe
