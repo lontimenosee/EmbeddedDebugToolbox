@@ -26,14 +26,6 @@ jobs:
           modules: "qtserialport"
           cache: true
 
-      - name: Set up MSYS2 MinGW
-        uses: msys2/setup-msys2@v2
-        with:
-          update: true
-          install: >-
-            mingw-w64-x86_64-toolchain
-            make
-
       - name: Build project
         shell: pwsh
         run: |
