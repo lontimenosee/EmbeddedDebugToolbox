@@ -1,4 +1,4 @@
-name: Release
+name: Release Portable Zip
 
 on:
   push:
@@ -26,41 +26,40 @@ jobs:
           modules: "qtserialport"
           cache: true
 
+      - name: Show build environment
+        shell: pwsh
+        run: |
+          Write-Host "Workspace: $pwd"
+          Write-Host "qmake path:"
+          Get-Command qmake
+          Write-Host "mingw32-make path:"
+          Get-Command mingw32-make
+          Write-Host "windeployqt path:"
+          Get-Command windeployqt
+
       - name: Build project
         shell: pwsh
         run: |
           qmake serialAssistant.pro CONFIG+=release
-          mingw32-make release
+          mingw32-make
 
       - name: Prepare dist folder
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
-          Copy-Item release\EmbeddedDebugToolbox.exe dist\
+          Copy-Item .\release\EmbeddedDebugToolbox.exe .\dist\
 
       - name: Deploy Qt runtime
         shell: pwsh
         run: |
-          windeployqt --release --compiler-runtime dist\EmbeddedDebugToolbox.exe
+          windeployqt --release --compiler-runtime .\dist\EmbeddedDebugToolbox.exe
 
       - name: Build portable zip
         shell: pwsh
         run: |
-          Compress-Archive -Path dist\* -DestinationPath EmbeddedDebugToolbox_Portable.zip -Force
+          Compress-Archive -Path .\dist\* -DestinationPath .\EmbeddedDebugToolbox_Portable.zip -Force
 
-      - name: Install Inno Setup
-        shell: pwsh
-        run: |
-          choco install innosetup -y
-
-      - name: Build installer
-        shell: pwsh
-        run: |
-          iscc installer.iss
-
-      - name: Upload release assets
+      - name: Upload release asset
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            EmbeddedDebugToolbox_Portable.zip
-            Output/EmbeddedDebugToolbox_Setup.exe
+          files: EmbeddedDebugToolbox_Portable.zip
