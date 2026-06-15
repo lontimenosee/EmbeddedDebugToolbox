@@ -40,7 +40,7 @@ jobs:
       - name: Build project
         shell: pwsh
         run: |
-          qmake serialAssistant.pro CONFIG+=release
+          qmake serialAssistant.pro CONFIG+=release CONFIG+=console
           mingw32-make
 
       - name: Prepare dist folder
