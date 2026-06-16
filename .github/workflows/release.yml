@@ -8,6 +8,11 @@ on:
 permissions:
   contents: write
 
+env:
+  QT_VERSION: "6.11.1"
+  QT_ARCH: "win64_msvc2022_64"
+  QT_MODULES: "qtserialport"
+
 jobs:
   build-and-release:
     runs-on: windows-latest
@@ -21,14 +26,27 @@ jobs:
         with:
           arch: x64
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Probe Qt versions and modules
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip aqtinstall
+          python -m aqt list-qt windows desktop | Select-String "6.11"
+          python -m aqt list-qt windows desktop --arch $env:QT_VERSION
+          python -m aqt list-qt windows desktop --modules $env:QT_VERSION $env:QT_ARCH
+
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
-          version: "6.11.0"
+          version: ${{ env.QT_VERSION }}
           host: "windows"
           target: "desktop"
-          arch: "win64_msvc2022_64"
-          modules: "qtserialport"
+          arch: ${{ env.QT_ARCH }}
+          modules: ${{ env.QT_MODULES }}
           cache: true
 
       - name: Show build environment
@@ -57,8 +75,9 @@ jobs:
           Tag: $env:GITHUB_REF_NAME
           Commit: $env:GITHUB_SHA
           BuiltAtUtc: $(Get-Date -AsUTC -Format "yyyy-MM-dd HH:mm:ss")
-          QtVersion: 6.11.0
-          QtArch: win64_msvc2022_64
+          QtVersion: $env:QT_VERSION
+          QtArch: $env:QT_ARCH
+          QtModules: $env:QT_MODULES
           Toolchain: MSVC x64
           "@ | Set-Content .\dist\build-info.txt
           Get-ChildItem .\dist
