@@ -24,17 +24,6 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Probe Qt metadata
-        shell: pwsh
-        run: |
-          python -m pip install --upgrade pip aqtinstall
-          Write-Host "Checking available Qt versions around $env:QT_VERSION"
-          python -m aqt list-qt windows desktop | Select-String "6.11"
-          Write-Host "Checking available architectures for $env:QT_VERSION"
-          python -m aqt list-qt windows desktop --arch $env:QT_VERSION
-          Write-Host "Checking available modules for $env:QT_VERSION / $env:QT_ARCH"
-          python -m aqt list-qt windows desktop --modules $env:QT_VERSION $env:QT_ARCH
-
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
