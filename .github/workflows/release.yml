@@ -16,13 +16,18 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
+      - name: Set up MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
-          version: "6.8.3"
+          version: "6.11.0"
           host: "windows"
           target: "desktop"
-          arch: "win64_mingw"
+          arch: "win64_msvc2022_64"
           modules: "qtserialport"
           cache: true
 
@@ -32,27 +37,37 @@ jobs:
           Write-Host "Workspace: $pwd"
           Write-Host "qmake path:"
           Get-Command qmake
-          Write-Host "mingw32-make path:"
-          Get-Command mingw32-make
+          Write-Host "nmake path:"
+          Get-Command nmake
           Write-Host "windeployqt path:"
           Get-Command windeployqt
 
       - name: Build project
         shell: pwsh
         run: |
-          qmake serialAssistant.pro CONFIG+=release CONFIG+=console
-          mingw32-make
+          qmake serialAssistant.pro -spec win32-msvc "CONFIG+=release"
+          nmake /NOLOGO
 
       - name: Prepare dist folder
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
           Copy-Item .\release\EmbeddedDebugToolbox.exe .\dist\
+          @"
+          Tag: $env:GITHUB_REF_NAME
+          Commit: $env:GITHUB_SHA
+          BuiltAtUtc: $(Get-Date -AsUTC -Format "yyyy-MM-dd HH:mm:ss")
+          QtVersion: 6.11.0
+          QtArch: win64_msvc2022_64
+          Toolchain: MSVC x64
+          "@ | Set-Content .\dist\build-info.txt
+          Get-ChildItem .\dist
 
       - name: Deploy Qt runtime
         shell: pwsh
         run: |
-          windeployqt --release --compiler-runtime .\dist\EmbeddedDebugToolbox.exe
+          windeployqt --release .\dist\EmbeddedDebugToolbox.exe
+          Get-ChildItem .\dist -Recurse | Select-Object FullName
 
       - name: Build portable zip
         shell: pwsh
