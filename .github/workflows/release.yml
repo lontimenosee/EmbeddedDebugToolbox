@@ -1,42 +1,38 @@
-name: Release Portable Zip
+name: Verify And Install Qt
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - "v*"
 
-permissions:
-  contents: write
-
 env:
-  QT_VERSION: "6.11.1"
-  QT_ARCH: "win64_msvc2022_64"
+  QT_VERSION: "6.11.0"
+  QT_ARCH: "win64_mingw"
   QT_MODULES: "qtserialport"
 
 jobs:
-  build-and-release:
+  verify-and-install-qt:
     runs-on: windows-latest
 
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Set up MSVC
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: x64
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Probe Qt versions and modules
+      - name: Probe Qt metadata
         shell: pwsh
         run: |
           python -m pip install --upgrade pip aqtinstall
+          Write-Host "Checking available Qt versions around $env:QT_VERSION"
           python -m aqt list-qt windows desktop | Select-String "6.11"
+          Write-Host "Checking available architectures for $env:QT_VERSION"
           python -m aqt list-qt windows desktop --arch $env:QT_VERSION
+          Write-Host "Checking available modules for $env:QT_VERSION / $env:QT_ARCH"
           python -m aqt list-qt windows desktop --modules $env:QT_VERSION $env:QT_ARCH
 
       - name: Install Qt
@@ -47,53 +43,20 @@ jobs:
           target: "desktop"
           arch: ${{ env.QT_ARCH }}
           modules: ${{ env.QT_MODULES }}
-          cache: true
+          dir: ${{ github.workspace }}
+          setup-python: false
+          cache: false
+          aqtversion: "==3.3.*"
 
-      - name: Show build environment
+      - name: Verify Qt tools
         shell: pwsh
         run: |
-          Write-Host "Workspace: $pwd"
           Write-Host "qmake path:"
           Get-Command qmake
-          Write-Host "nmake path:"
-          Get-Command nmake
+          Write-Host "mingw32-make path:"
+          Get-Command mingw32-make
           Write-Host "windeployqt path:"
           Get-Command windeployqt
-
-      - name: Build project
-        shell: pwsh
-        run: |
-          qmake serialAssistant.pro -spec win32-msvc "CONFIG+=release"
-          nmake /NOLOGO
-
-      - name: Prepare dist folder
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path dist | Out-Null
-          Copy-Item .\release\EmbeddedDebugToolbox.exe .\dist\
-          @"
-          Tag: $env:GITHUB_REF_NAME
-          Commit: $env:GITHUB_SHA
-          BuiltAtUtc: $(Get-Date -AsUTC -Format "yyyy-MM-dd HH:mm:ss")
-          QtVersion: $env:QT_VERSION
-          QtArch: $env:QT_ARCH
-          QtModules: $env:QT_MODULES
-          Toolchain: MSVC x64
-          "@ | Set-Content .\dist\build-info.txt
-          Get-ChildItem .\dist
-
-      - name: Deploy Qt runtime
-        shell: pwsh
-        run: |
-          windeployqt --release .\dist\EmbeddedDebugToolbox.exe
-          Get-ChildItem .\dist -Recurse | Select-Object FullName
-
-      - name: Build portable zip
-        shell: pwsh
-        run: |
-          Compress-Archive -Path .\dist\* -DestinationPath .\EmbeddedDebugToolbox_Portable.zip -Force
-
-      - name: Upload release asset
-        uses: softprops/action-gh-release@v2
-        with:
-          files: EmbeddedDebugToolbox_Portable.zip
+          qmake --version
+          mingw32-make --version
+          windeployqt --version
